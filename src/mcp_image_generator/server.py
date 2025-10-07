@@ -1,8 +1,8 @@
+import os
 from typing import Annotated, Literal, Optional
 
 import click
 import fastmcp.utilities.types
-import mcp.types as mcp_types
 from click_params import IP_ADDRESS
 from fastmcp import Context, FastMCP
 from fastmcp.utilities.logging import configure_logging, get_logger
@@ -13,8 +13,8 @@ from pydantic import Field
 logger = get_logger(__name__)
 
 MODEL: str = "imagen-4.0-generate-001"
-GEMINI_API_KEY: str = "unknown"
-mcp = FastMCP("mcp-file-server")
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "no-key-given")
+mcp = FastMCP("mcp-image-generator")
 
 
 @mcp.tool
@@ -36,12 +36,12 @@ async def generate_image(
             "allow_all": Generate images that include adults and children."""
         ),
     ] = "allow_adult",
-) -> list[mcp_types.ImageContent]:
+) -> list[fastmcp.utilities.types.Image]:
     """Generate an image based on a prompt using an image generation model."""
     logger.info(f"Generating {num_images} images with prompt: '{prompt}'")
 
     try:
-        logger.info("Creating client")
+        logger.info(f"Creating client with api_key {GEMINI_API_KEY}")
         client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
         await ctx.error(f"Failed to create Gemini client: {e}")
@@ -66,16 +66,18 @@ async def generate_image(
             await ctx.warning("No images were generated.")
             raise ValueError("No images were generated.")
 
+        logger.info("Received results")
         fastmcp_images = []
         for generated_image in response.generated_images:
             if generated_image.image is None:
                 continue
 
+            logger.info("adding image to output list")
             fastmcp_images.append(fastmcp.utilities.types.Image(data=generated_image.image.image_bytes, format="png"))
 
-        images = [image.to_image_content() for image in fastmcp_images]
-        await ctx.info(f"Successfully generated {len(images)} images.")
-        return images
+        logger.info("Created output list")
+        await ctx.info(f"Successfully generated {len(fastmcp_images)} images.")
+        return fastmcp_images
 
     except Exception as e:
         await ctx.error(f"Failed to generate images: {e}")
