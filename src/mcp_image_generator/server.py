@@ -21,7 +21,7 @@ async def generate_image(
     ctx: Context,
     prompt: Annotated[str, Field(description="The prompt to generate an image for", max_length=1920)],
     image_size: Annotated[Optional[Literal["1K", "2K"]], Field(description="The size of the generated image")] = "1K",
-    num_images: Annotated[Optional[int], Field(description="The number of images to generate", ge=1, le=4)] = 4,
+    num_images: Annotated[Optional[int], Field(description="The number of images to generate", ge=1, le=1)] = 1,
     aspect_ratio: Annotated[
         Optional[Literal["1:1", "3:4", "4:3", "9:16", "16:9"]],
         Field(description="The aspect ratio of the generated image"),
@@ -35,7 +35,7 @@ async def generate_image(
             "allow_all": Generate images that include adults and children."""
         ),
     ] = "allow_adult",
-) -> list[fastmcp.utilities.types.Image]:
+) -> fastmcp.utilities.types.Image:
     """Generate an image based on a prompt using an image generation model."""
     logger.info(f"Generating {num_images} images with prompt: '{prompt}'")
 
@@ -76,7 +76,7 @@ async def generate_image(
 
             images.append(fastmcp.utilities.types.Image(data=generated_image.image.image_bytes, format="png"))
 
-        return images
+        return images[0]
 
     except Exception as e:
         await ctx.error(f"Failed to generate images: {e}")
